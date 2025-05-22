@@ -1,0 +1,9 @@
+vs_
+intel
+VS
+MSI
+Microsoft 
+Windows
+WinRT
+vs
+Microsoft ASP.NET Core 8.0.2
