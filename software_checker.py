@@ -7,6 +7,7 @@ import re
 import tkinter.messagebox
 import csv
 import os
+import logging
 
 # 从文件读取正版软件清单
 import os
@@ -46,7 +47,14 @@ class SoftwareCheckerApp:
         SYSTEM_SOFTWARE = read_system_software()
         self.root = root
         self.root.title("软件正版化检查工具")
-        self.root.geometry("800x900")
+        # 获取屏幕宽度和高度
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        # 计算窗口的 x 和 y 坐标
+        x = (screen_width - 800) // 2
+        y = (screen_height - 900) // 2
+        # 设置窗口位置
+        self.root.geometry(f"800x900+{x}+{y}")
         self.root.resizable(False, False)
 
         # 创建执行检查按钮
@@ -199,78 +207,78 @@ def read_installed_software():
     return installed_software
 
 # 在 check_software 方法中调用
-    def check_software(self):
-        SYSTEM_SOFTWARE = read_software_list(SYSTEM_SOFTWARE_FILE)
-        installed_software = read_installed_software()
-        # 添加加载提示
-        self.check_button.config(state='disabled', text='检查中...')
-        self.root.update_idletasks()
+def check_software(self):
+    SYSTEM_SOFTWARE = read_software_list(SYSTEM_SOFTWARE_FILE)
+    installed_software = read_installed_software()
+    # 添加加载提示
+    self.check_button.config(state='disabled', text='检查中...')
+    self.root.update_idletasks()
 
-        # 清空Treeview
-        for item in self.tree.get_children():
-            self.tree.delete(item)
+    # 清空Treeview
+    for item in self.tree.get_children():
+        self.tree.delete(item)
 
-        # 从Windows注册表读取控制面板程序
-        installed_software = []
-        try:
-            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall")
-            for i in range(0, winreg.QueryInfoKey(key)[0]):
-                subkey_name = winreg.EnumKey(key, i)
-                subkey = winreg.OpenKey(key, subkey_name)
-                try:
-                    display_name, _ = winreg.QueryValueEx(subkey, 'DisplayName')
-                    installed_software.append(display_name)
-                except OSError:
-                    continue
-                finally:
-                    subkey.Close()
-            key.Close()
-            # 32位程序在64位系统的注册表位置
-            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall")
-            for i in range(0, winreg.QueryInfoKey(key)[0]):
-                subkey_name = winreg.EnumKey(key, i)
-                subkey = winreg.OpenKey(key, subkey_name)
-                try:
-                    display_name, _ = winreg.QueryValueEx(subkey, 'DisplayName')
-                    installed_software.append(display_name)
-                except OSError:
-                    continue
-                finally:
-                    subkey.Close()
-            key.Close()
-        except Exception as e:
-            print(f'读取注册表时出错: {e}')
-
-        # 从系统软件清单中过滤系统程序
-        SYSTEM_SOFTWARE = read_system_software()
-        processes = [name for name in installed_software if not any(re.search(system_sw, name, re.IGNORECASE) for system_sw in SYSTEM_SOFTWARE)]
-
-        index = 1
-        for process in processes:
-            
+    # 从Windows注册表读取控制面板程序
+    installed_software = []
+    try:
+        key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall")
+        for i in range(0, winreg.QueryInfoKey(key)[0]):
+            subkey_name = winreg.EnumKey(key, i)
+            subkey = winreg.OpenKey(key, subkey_name)
             try:
-                software_name = process
-                is_licensed = any(re.search(licensed, software_name, re.IGNORECASE) for licensed in LICENSED_SOFTWARE)
-                suggestion = '保留' if is_licensed else '请立即卸载'
-
-                # 修改显示逻辑，确保处置建议为保留时显示 √
-                is_licensed_display = '✓' if suggestion == '保留' else '×'
-
-                if suggestion == '请立即卸载':
-                    action = '卸载'
-                    iid = self.tree.insert('', 'end', values=(index, software_name, is_licensed_display, suggestion, action))
-                    self.tree.item(iid, tags=('button',))
-                else:
-                    self.tree.insert('', 'end', values=(index, software_name, is_licensed_display, suggestion, ''))
-                if not is_licensed:
-                    self.tree.tag_configure('unlicensed', foreground='red')
-                    self.tree.item(self.tree.get_children()[-1], tags=('unlicensed',))
-                    index += 1
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                display_name, _ = winreg.QueryValueEx(subkey, 'DisplayName')
+                installed_software.append(display_name)
+            except OSError:
                 continue
+            finally:
+                subkey.Close()
+        key.Close()
+        # 32位程序在64位系统的注册表位置
+        key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall")
+        for i in range(0, winreg.QueryInfoKey(key)[0]):
+            subkey_name = winreg.EnumKey(key, i)
+            subkey = winreg.OpenKey(key, subkey_name)
+            try:
+                display_name, _ = winreg.QueryValueEx(subkey, 'DisplayName')
+                installed_software.append(display_name)
+            except OSError:
+                continue
+            finally:
+                subkey.Close()
+        key.Close()
+    except Exception as e:
+        print(f'读取注册表时出错: {e}')
 
-        # 检查完成后恢复按钮状态
-        self.check_button.config(state='normal', text='执行检查')
+    # 从系统软件清单中过滤系统程序
+    SYSTEM_SOFTWARE = read_system_software()
+    processes = [name for name in installed_software if not any(re.search(system_sw, name, re.IGNORECASE) for system_sw in SYSTEM_SOFTWARE)]
+
+    index = 1
+    for process in processes:
+        
+        try:
+            software_name = process
+            is_licensed = any(re.search(licensed, software_name, re.IGNORECASE) for licensed in LICENSED_SOFTWARE)
+            suggestion = '保留' if is_licensed else '请立即卸载'
+
+            # 修改显示逻辑，确保处置建议为保留时显示 √
+            is_licensed_display = '✓' if suggestion == '保留' else '×'
+
+            if suggestion == '请立即卸载':
+                action = '卸载'
+                iid = self.tree.insert('', 'end', values=(index, software_name, is_licensed_display, suggestion, action))
+                self.tree.item(iid, tags=('button',))
+            else:
+                self.tree.insert('', 'end', values=(index, software_name, is_licensed_display, suggestion, ''))
+            if not is_licensed:
+                self.tree.tag_configure('unlicensed', foreground='red')
+                self.tree.item(self.tree.get_children()[-1], tags=('unlicensed',))
+                index += 1
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+
+    # 检查完成后恢复按钮状态
+    self.check_button.config(state='normal', text='执行检查')
 
 if __name__ == "__main__":
     root = ThemedTk(theme='arc')
