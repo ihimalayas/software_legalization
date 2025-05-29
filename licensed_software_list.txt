@@ -2,38 +2,67 @@
 Word
 Excel
 PowerPoint
-Apifox
-Everthing
-WPS
-Java
-Google Chrome
-7z
-Samsung Easy Printer Manager
-龙视讯
-Chrome
 Microsoft Office
 Microsoft Visio
 Microsoft Project
+
+Java
+
+Google
+Chrome
+edge
+ie
+internet explorer
+explorer
+7z
+
+Samsung Easy Printer Manager
+Printer
+
+龙视讯
+
+
+
+Windows
 WPS
-Java Runtime Environment
-eyou
+ZFInfo
+龙视讯
+中国建设银行
+邮箱
+eYou
+销毁工具单机版
+搜狗拼音输入法
+搜狗五笔输入法
+输入法
+Microsoft
+iWebOffice
+EasService
+Adobe
+Google
+Chrome
+rhtx
+
 建行OA
-WinRar
+
 7-Zip
+金山
 金山PDF软件
 金山OFD版式软件
 金山PDF软件
-Adobe Acrobat Pro
-搜狗拼音输入法
-搜狗五笔输入法
+
 Freeplane
 融合通信
 安全客户端
 水印客户端
 文件销毁工具
+ET-smash
+
 零信任客户端
 终端数据安全防泄漏客户端
+
 E路护航网银安全组件
+E路护航
+
 企业商店安装程序
 员工渠道客户端安装程序
 建行桌面屏保
@@ -41,4 +70,3 @@ E路护航网银安全组件
 龙集采插件
 常用打印机驱动
 一键自动激活配置
-

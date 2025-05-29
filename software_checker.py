@@ -57,15 +57,59 @@ class SoftwareCheckerApp:
         self.root.geometry(f"800x900+{x}+{y}")
         self.root.resizable(False, False)
 
-        # 创建执行检查按钮
-        self.check_button = ttk.Button(self.root, text="执行检查", command=self.check_software)
-        self.check_button.pack(pady=10)
+        # 创建菜单栏
+        self.menu_bar = tk.Menu(self.root)
+        self.root.config(menu=self.menu_bar)
 
-        # 创建导出按钮
-        self.export_button = ttk.Button(self.root, text="导出结果", command=self.export_results, state='disabled')
-        self.export_button.pack(pady=10)
+        # 直接添加关于菜单项（顶层菜单）
+        self.menu_bar.add_command(label="关于", command=self.show_about)
 
-        # 创建Treeview
+        # 导入PIL库（用于图片显示）
+
+
+        # 创建按钮框架（整体居中）
+        self.button_frame = ttk.Frame(self.root)
+        self.button_frame.pack(pady=10, fill='x', anchor='center')  # 父框架整体居中
+
+        # 执行检查按钮（框架内顶部）
+        self.check_button = ttk.Button(self.button_frame, text="执行检查", command=self.check_software)
+        self.check_button.pack(pady=5)
+
+        # 导出/批量删除按钮子框架（水平排列并居中）
+        self.export_batch_frame = ttk.Frame(self.button_frame)
+        self.export_batch_frame.pack(pady=5, anchor='center')  # 子框架居中
+
+        # 导出结果按钮
+        self.export_button = ttk.Button(self.export_batch_frame, text="导出结果", command=self.export_results, state='disabled')
+        self.export_button.pack(side='left', padx=(0, 20))
+
+        # 打开卸载页面按钮
+        self.open_uninstall_button = ttk.Button(self.export_batch_frame, text="打开软件卸载页面", command=self.open_control_panel_uninstall)
+        self.open_uninstall_button.pack(side='left', padx=(0, 20))
+        # 自定义工具提示
+        def show_tooltip(widget, text):
+            def enter(event):
+                tooltip = tkinter.Toplevel(widget)
+                tooltip.wm_overrideredirect(True)
+                tooltip.wm_geometry(f"+{event.x_root+10}+{event.y_root+10}")
+                ttk.Label(tooltip, text=text, background="#ffffe0", relief="solid", borderwidth=1).pack()
+                widget.tooltip = tooltip
+            def leave(event):
+                if hasattr(widget, 'tooltip'):
+                    widget.tooltip.destroy()
+            widget.bind("<Enter>", enter)
+            widget.bind("<Leave>", leave)
+        show_tooltip(self.open_uninstall_button, "点击打开系统控制面板的卸载程序页面")
+
+
+
+        # 统计信息框架（Treeview正上方）
+        self.stats_frame = ttk.Frame(self.root)
+        self.stats_frame.pack(pady=5, fill='x', anchor='center')
+        self.stats_label = ttk.Label(self.stats_frame, text="")
+        self.stats_label.pack()
+
+        # 创建Treeview（按钮框架下方）
         self.tree = ttk.Treeview(self.root, columns=("序号", "软件名称", "是否为正版化软件", "处置建议"), show="headings")
         self.tree.heading("序号", text="序号", anchor=tk.CENTER)
         self.tree.column("序号", anchor=tk.CENTER)
@@ -91,9 +135,7 @@ class SoftwareCheckerApp:
         self.tree.pack(side="left", fill="both", expand=True, pady=(0, 5), padx=(5, 0))
         scrollbar.pack(side="right", fill="y", pady=(0, 5))
 
-        # # 添加版本信息和开发者信息
-        # self.version_label = ttk.Label(self.root, text="版本号: 1.0.0, 开发者: 示例团队")
-        # self.version_label.pack(side="bottom", pady=10)
+
 
     def check_software(self):
         # 添加加载提示
@@ -140,13 +182,12 @@ class SoftwareCheckerApp:
         processes = [name for name in installed_software if not any(re.search(system_sw, name, re.IGNORECASE) for system_sw in SYSTEM_SOFTWARE)]
 
         index = 1
-        for process in processes:
-            
+        for process in processes: 
             try:
                 software_name = process
                 is_licensed = any(re.search(licensed, software_name, re.IGNORECASE) for licensed in LICENSED_SOFTWARE)
                 suggestion = '保留' if is_licensed else '请立即卸载'
- 
+
                 if suggestion == '保留':
                     is_licensed_display = '✓'
                 else:
@@ -160,13 +201,27 @@ class SoftwareCheckerApp:
                 if not is_licensed:
                     self.tree.tag_configure('unlicensed', foreground='red')
                     self.tree.item(self.tree.get_children()[-1], tags=('unlicensed',))
-                    index += 1
+                index += 1
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
+
+        # 计算统计信息
+        total_software = len(processes)
+        licensed_software = sum(1 for p in processes if any(re.search(licensed, p, re.IGNORECASE) for licensed in LICENSED_SOFTWARE))
+        unlicensed_software = total_software - licensed_software
+        # 系统软件和正版化清单内正版数（假设为正版软件数，因系统软件已被过滤）
+        system_licensed_software = licensed_software
+        self.stats_label.config(text=f"软件总数：{total_software} | 正版软件数：{licensed_software} | 非法软件数：{unlicensed_software}")
 
         # 检查完成后恢复按钮状态，并启用导出按钮
         self.check_button.config(state='normal', text='执行检查')
         self.export_button.config(state='normal')
+
+        # 检查是否有需要卸载的软件以启用卸载按钮
+        has_uninstall_items = any(
+            len(self.tree.item(item, 'values')) >=4 and self.tree.item(item, 'values')[3] == '请立即卸载'
+            for item in self.tree.get_children()
+        )
 
     def export_results(self):
         try:
@@ -175,12 +230,101 @@ class SoftwareCheckerApp:
             with open(file_path, 'w', newline='', encoding='utf-8-sig') as file:
                 writer = csv.writer(file)
                 writer.writerow(["序号", "软件名称", "是否为正版化软件", "处置建议"])
-                for item in self.tree.get_children(): 
+                for item in self.tree.get_children():
                     values = self.tree.item(item, 'values')
                     writer.writerow(values[:4])
             tkinter.messagebox.showinfo("成功", "导出成功！")
         except Exception as e:
             tkinter.messagebox.showerror("错误", f"导出失败: {str(e)}")
+
+    def show_about(self):
+        # 创建关于对话框
+        about_window = tk.Toplevel(self.root)
+        about_window.title("关于")
+        about_window.resizable(False, False)
+
+        # 计算对话框居中位置
+        main_x = self.root.winfo_x()
+        main_y = self.root.winfo_y()
+        main_width = self.root.winfo_width()
+        main_height = self.root.winfo_height()
+        dialog_width = 400
+        dialog_height = 300
+        x = main_x + (main_width - dialog_width) // 2
+        y = main_y + (main_height - dialog_height) // 2
+        about_window.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
+
+        # 版本和开发者信息
+        info_label = ttk.Label(about_window, text="软件版本: 1.0.0\n\n开发者: 甘肃分行金融科技部", justify="center")
+        info_label.pack(pady=10)
+
+    def open_control_panel_uninstall(self):
+        # 打开控制面板的程序和功能（卸载）页面
+        import subprocess
+        # 使用start命令调用控制面板的appwiz.cpl（程序和功能）
+        subprocess.run(['start', 'control', 'appwiz.cpl'], shell=True, check=True)
+
+    # 原批量卸载功能已移除
+
+    def get_uninstall_command(self, software_name):
+        # 从注册表查找软件对应的卸载命令（优化匹配逻辑）
+        reg_paths = [
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+            r"SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+        ]
+
+        for path in reg_paths:
+            try:
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path)
+                for i in range(winreg.QueryInfoKey(key)[0]):
+                    subkey_name = winreg.EnumKey(key, i)
+                    subkey = winreg.OpenKey(key, subkey_name)
+                    try:
+                        display_name = winreg.QueryValueEx(subkey, 'DisplayName')[0].strip().lower()
+                        # 修复：使用精确小写匹配代替正则（避免误匹配）
+                        if display_name == software_name.strip().lower():
+                            return winreg.QueryValueEx(subkey, 'UninstallString')[0]
+                    except OSError:
+                        continue
+                    finally:
+                        subkey.Close()
+                key.Close()
+            except Exception as e:
+                continue
+        return None
+
+
+    def _get_uninstall_path(self, software_name):
+        # 从注册表读取卸载路径（简化示例）
+        try:
+            keys = [r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", r"SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall"]
+            for key_path in keys:
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path)
+                for i in range(0, winreg.QueryInfoKey(key)[0]):
+                    subkey_name = winreg.EnumKey(key, i)
+                    subkey = winreg.OpenKey(key, subkey_name)
+                    try:
+                        display_name, _ = winreg.QueryValueEx(subkey, 'DisplayName')
+                        if display_name == software_name:
+                            uninstall_string, _ = winreg.QueryValueEx(subkey, 'UninstallString')
+                            return uninstall_string
+                    except OSError:
+                        continue
+                    finally:
+                        subkey.Close()
+                key.Close()
+        except Exception as e:
+            logging.error(f"读取注册表失败：{e}")
+        return None
+
+        # 示例：模拟卸载（实际需调用系统卸载命令）
+        for software in uninstall_items:
+            # 实际应从注册表获取卸载命令（示例伪代码）
+            # uninstall_cmd = get_uninstall_command(software)
+            # subprocess.run(uninstall_cmd, shell=True)
+            tkinter.messagebox.showinfo("卸载提示", f"正在模拟卸载：{software}")
+
+        tkinter.messagebox.showinfo("完成", "批量卸载操作已完成（模拟）")
 
 def read_installed_software():
     installed_software = []
